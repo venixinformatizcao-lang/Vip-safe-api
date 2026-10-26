@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>VIP SOS — Segurança Pessoal</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#151f30;--line:#2d3b50;--muted:#b7c3d4;--red:#dc2626;--green:#0f766e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f8fafc;font:16px Arial,sans-serif}
+header{text-align:center;padding:20px 14px 12px;background:#111827;border-bottom:1px solid var(--line)}
+header .brand{font-weight:800;letter-spacing:1px;color:#fca5a5}h1{font-size:25px;margin:8px 0}header p{color:var(--muted);font-size:13px;margin:0}
+main{max-width:760px;margin:auto;padding:12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:15px;margin:12px 0}
+h2{font-size:18px;margin:0 0 12px}label{display:block;font-size:13px;color:#dbeafe;margin:10px 0 5px}
+input,textarea,select{width:100%;padding:12px;border-radius:9px;border:1px solid #475569;background:#0b1220;color:#fff;font:inherit}
+button,.button{border:0;border-radius:10px;padding:12px 14px;font-size:15px;font-weight:700;color:white;background:#334155;cursor:pointer;text-decoration:none;display:inline-block;text-align:center;touch-action:manipulation}
+.sos{width:100%;min-height:135px;background:var(--red);border:4px solid #fecaca;border-radius:18px;font-size:34px;box-shadow:0 5px 0 #7f1d1d}
+.sos small{display:block;font-size:13px;font-weight:600;margin-top:8px}.green{background:var(--green)}.danger{background:#991b1b}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.row>*{flex:1;min-width:115px}
+.status{padding:12px;border-radius:9px;background:#172554;border:1px solid #334155;line-height:1.45;margin-top:12px;overflow-wrap:anywhere}
+.hint{font-size:12px;color:var(--muted);line-height:1.5}.contact{padding:12px 0;border-top:1px solid var(--line)}.contact strong{display:block;margin-bottom:4px}.badge{display:inline-block;padding:5px 8px;border-radius:99px;background:#713f12;color:#fde68a;font-size:11px;font-weight:700}
+#map{height:220px;width:100%;border:0;border-radius:10px;background:#0b1220;margin-top:8px}
+footer{text-align:center;color:#94a3b8;font-size:11px;padding:10px 18px 24px;line-height:1.5}
+</style>
+</head>
+<body>
+<header><div class="brand">🛡️ VIP SAFE</div><h1>Alerta de Emergência SOS</h1><p>Interface do VIP • Contatos de confiança • Localização</p></header>
+<main>
+<section class="card">
+<span class="badge">CENTRAL: configure o endereço e o token abaixo</span>
+<h2 style="margin-top:12px">Acionamento de emergência</h2>
+<button id="sos" class="sos">🆘 SOS<small>TOQUE PARA INICIAR ALERTA</small></button>
+<div id="status" class="status" role="status" aria-live="polite">Sistema pronto. Cadastre os contatos e teste somente em ambiente controlado.</div>
+<div class="row"><button id="testSound">🔊 Testar som</button><button id="getLocation">📍 Obter localização</button><button id="stopAlert" class="danger">Parar som</button></div>
+<p class="hint">Ao tocar SOS, o sistema tenta vibrar e emitir som, busca a localização e prepara opções para avisar os contatos. O navegador exige autorização para localização; WhatsApp/SMS ainda precisam ser confirmados por você.</p>
+</section>
+<section class="card">
+<h2>Identificação do VIP</h2>
+<label for="vip">Nome ou código do VIP</label><input id="vip" value="VIP 001" maxlength="60">
+<label for="teamCode">Código da central (opcional)</label><input id="teamCode" value="CENTRAL 02" maxlength="40">
+<label for="apiUrl">Endereço da central (URL https)</label><input id="apiUrl" type="url" placeholder="https://sua-central.onrender.com">
+<label for="apiToken">Token do dispositivo</label><input id="apiToken" type="password" placeholder="Fornecido pelo administrador">
+<div class="row"><button id="saveProfile" class="green">Salvar identificação</button><button id="testConn">Testar conexão</button></div>
+<p id="profileStatus" class="hint">Os dados ficam salvos somente neste navegador.</p>
+</section>
+<section class="card">
+<h2>Contatos de confiança</h2>
+<label for="contactName">Nome</label><input id="contactName" placeholder="Nome do contato" autocomplete="name">
+<label for="contactPhone">Telefone com DDD e código do país</label><input id="contactPhone" placeholder="Ex.: +55 61 99999-9999" type="tel" autocomplete="tel">
+<div class="row"><button id="addContact" class="green">Adicionar contato</button><button id="exportContacts">Exportar contatos</button></div>
+<div id="contacts"></div>
+<p class="hint">Inclua números com autorização dos contatos. Os contatos ficam armazenados localmente neste aparelho/navegador.</p>
+</section>
+<section class="card">
+<h2>Localização do VIP</h2>
+<div id="locationText" class="status">Localização ainda não consultada.</div>
+<div class="row"><a id="mapLink" class="button" href="#" target="_blank" rel="noopener" style="display:none">Abrir localização no mapa</a><button id="shareAlert">Compartilhar alerta</button></div>
+<p class="hint">Este HTML não transmite GPS continuamente em segundo plano. O compartilhamento de localização em tempo real com a equipe exige servidor/API, conexão e permissões adequadas.</p>
+</section>
+<section class="card">
+<h2>Histórico neste aparelho</h2>
+<div id="history" class="hint">Nenhuma ocorrência registrada.</div>
+<div class="row"><button id="exportHistory">Exportar histórico</button><button id="clearHistory" class="danger">Limpar histórico</button></div>
+</section>
+<section class="card">
+<h2>Próxima etapa para uso real</h2>
+<p class="hint">Para uma central remota receber o SOS automaticamente, será necessário hospedar uma API segura e um painel autenticado, configurar notificações e testar em dois aparelhos. Este arquivo, sozinho, é um protótipo funcional local e não garante monitoramento 24 horas.</p>
+</section>
+</main>
+<footer>Ferramenta auxiliar de teste; não substitui serviços oficiais nem uma central de monitoramento conectada. Em perigo imediato no Brasil, ligue 190 quando for seguro.</footer>
+<script>
+const $=id=>document.getElementById(id);
+const K={profile:'vipsos_profile_v1',contacts:'vipsos_contacts_v1',history:'vipsos_history_v1'};
+let contacts=[],historyItems=[],coords=null,alarmTimer=null,audioCtx=null;
+function read(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+function setStatus(t){$('status').textContent=t}
+function digits(s){return String(s||'').replace(/\D/g,'')}
+function profile(){return {vip:$('vip').value.trim()||'VIP 001',team:$('teamCode').value.trim()||'CENTRAL 02'}}
+function message(){let p=profile();let m='ALERTA SOS — '+p.vip+' precisa de ajuda. Central: '+p.team+'.';if(coords)m+=' Localização: https://maps.google.com/?q='+coords.lat+','+coords.lon;return m}
+function beep(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioCtx=audioCtx||new C();if(audioCtx.state==='suspended')audioCtx.resume();const start=audioCtx.currentTime;[0,.45,.9,1.35].forEach(t=>{let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=880;g.gain.setValueAtTime(.001,start+t);g.gain.exponentialRampToValueAtTime(.18,start+t+.02);g.gain.exponentialRampToValueAtTime(.001,start+t+.28);o.connect(g);g.connect(audioCtx.destination);o.start(start+t);o.stop(start+t+.3)})}catch(e){}}
+function startAlert(){beep();if(navigator.vibrate){navigator.vibrate([500,250,500,250,900]);alarmTimer=setInterval(()=>navigator.vibrate([500,250,500]),2200)}}
+function stopAlert(){if(alarmTimer){clearInterval(alarmTimer);alarmTimer=null}if(navigator.vibrate)navigator.vibrate(0);if(audioCtx){try{audioCtx.close()}catch(e){}audioCtx=null}setStatus('Som e vibração interrompidos.')}
+function renderContacts(){const box=$('contacts');box.innerHTML='';if(!contacts.length){box.innerHTML='<p class="hint">Nenhum contato cadastrado.</p>';return}
+contacts.forEach((c,i)=>{const d=document.createElement('div');d.className='contact';const s=document.createElement('strong');s.textContent=c.name;const p=document.createElement('div');p.className='hint';p.textContent=c.phone;d.append(s,p);const row=document.createElement('div');row.className='row';
+[['WhatsApp',()=>openWhatsApp(c),'green'],['SMS',()=>openSMS(c),''],['Ligar',()=>location.href='tel:'+digits(c.phone),''],['Excluir',()=>{contacts.splice(i,1);save(K.contacts,contacts);renderContacts()},'danger']].forEach(([t,f,cl])=>{const b=document.createElement('button');b.textContent=t;b.onclick=f;if(cl)b.className=cl;row.append(b)});d.append(row);box.append(d)})}
+function openWhatsApp(c){window.open('https://wa.me/'+digits(c.phone)+'?text='+encodeURIComponent(message()),'_blank')}
+function openSMS(c){location.href='sms:'+digits(c.phone)+'?body='+encodeURIComponent(message())}
+function logEvent(t){historyItems.unshift(new Date().toLocaleString('pt-BR')+' — '+t);historyItems=historyItems.slice(0,50);save(K.history,historyItems);renderHistory()}
+function renderHistory(){const b=$('history');b.innerHTML='';if(!historyItems.length){b.textContent='Nenhuma ocorrência registrada.';return}historyItems.slice(0,15).forEach(x=>{let d=document.createElement('div');d.className='contact';d.textContent=x;b.append(d)})}
+function getLocation(){return new Promise(resolve=>{if(!navigator.geolocation){$('locationText').textContent='Este navegador não oferece geolocalização.';resolve(false);return}
+$('locationText').textContent='Solicitando permissão de localização…';navigator.geolocation.getCurrentPosition(p=>{coords={lat:p.coords.latitude.toFixed(6),lon:p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy)};$('locationText').textContent='Latitude: '+coords.lat+' | Longitude: '+coords.lon+' | Precisão aproximada: '+Math.round(p.coords.accuracy)+' m';$('mapLink').href='https://maps.google.com/?q='+coords.lat+','+coords.lon;$('mapLink').style.display='inline-block';resolve(true)},e=>{$('locationText').textContent='Não foi possível obter localização. Confira a permissão e a conexão.';resolve(false)},{enableHighAccuracy:true,timeout:15000,maximumAge:10000})})}
+$('addContact').onclick=()=>{let name=$('contactName').value.trim(),phone=$('contactPhone').value.trim();if(!name||digits(phone).length<8){setStatus('Informe o nome e um telefone válido com DDD.');return}contacts.push({name,phone});if(!save(K.contacts,contacts)){setStatus('Não foi possível salvar no navegador.');return}$('contactName').value='';$('contactPhone').value='';renderContacts();setStatus('Contato salvo neste aparelho.')};
+$('saveProfile').onclick=()=>{save(K.profile,profile());$('profileStatus').textContent='Identificação salva neste aparelho.'};
+$('testSound').onclick=()=>{startAlert();setStatus('Teste de som e vibração iniciado. Toque em “Parar som” para interromper.')};
+$('stopAlert').onclick=async()=>{stopAlert();if(NET.id){await netSend('CANCELLED');stopLive();NET.id=null;setStatus('Alerta encerrado e central avisada.')}};
+$('getLocation').onclick=()=>getLocation().then(ok=>setStatus(ok?'Localização obtida.':'Não foi possível obter localização.'));
+$('sos').onclick=async()=>{if(!contacts.length){setStatus('Antes do SOS, cadastre pelo menos um contato de confiança.');return}if(!confirm('TESTE SOS: iniciar alerta, vibração e preparar contato de emergência?'))return;
+startAlert();await getLocation();NET.id=uuid();const p=profile();const nr=await netSend('SOS');startLive();logEvent('SOS acionado por '+p.vip+'; '+(coords?'localização obtida':'localização indisponível')+'; central: '+(nr.ok?'ALERTA ENVIADO':'NÃO enviado ('+nr.reason+')')+'.');setStatus(nr.ok?'SOS enviado para a central. Localização ao vivo ativa enquanto esta página estiver aberta.':'SOS iniciado neste aparelho, mas NÃO chegou à central ('+nr.reason+'). Avise seus contatos.');
+const c=contacts[0];if(confirm('Abrir WhatsApp para '+c.name+' com a mensagem de emergência?'))openWhatsApp(c);else if(confirm('Abrir SMS para '+c.name+'?'))openSMS(c);};
+$('shareAlert').onclick=()=>{if(!contacts.length){setStatus('Cadastre contatos antes de compartilhar.');return}const c=contacts[0];if(confirm('Abrir WhatsApp para '+c.name+' com alerta e localização disponível?'))openWhatsApp(c);else if(confirm('Abrir SMS para '+c.name+'?'))openSMS(c)};
+$('exportContacts').onclick=()=>download('contatos_vip_sos.json',JSON.stringify(contacts,null,2),'application/json');
+$('exportHistory').onclick=()=>download('historico_vip_sos.txt',historyItems.join('\n'),'text/plain');
+$('clearHistory').onclick=()=>{if(confirm('Apagar o histórico salvo neste aparelho?')){historyItems=[];save(K.history,historyItems);renderHistory()}};
+function download(name,data,type){const a=document.createElement('a');const u=URL.createObjectURL(new Blob([data],{type}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+
+const NET={key:'vipsos_net_v1',id:null,timer:null,watch:null};
+function netCfg(){return read(NET.key,{url:'',token:''})}
+function uuid(){return crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2)}
+async function netSend(type,extra={}){const c=netCfg();if(!c.url||!c.token)return {ok:false,reason:'central nao configurada'};
+const body={type,client:profile().vip,phone:'',source:'vipsos',event_id:NET.id||uuid(),timestamp:new Date().toISOString(),location:coords?{latitude:+coords.lat,longitude:+coords.lon,accuracy_m:coords.acc||0}:null,...extra};
+try{const r=await fetch(c.url.replace(/\/$/,'')+'/api/alerts',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.token},body:JSON.stringify(body)});if(!r.ok)throw new Error('HTTP '+r.status);return {ok:true}}catch(e){return {ok:false,reason:e.message}}}
+function startLive(){stopLive();if(!navigator.geolocation)return;
+NET.watch=navigator.geolocation.watchPosition(p=>{coords={lat:p.coords.latitude.toFixed(6),lon:p.coords.longitude.toFixed(6),acc:Math.round(p.coords.accuracy)};$('locationText').textContent='AO VIVO — Lat '+coords.lat+' | Lon '+coords.lon+' | ±'+coords.acc+' m'},()=>{},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+NET.timer=setInterval(()=>{if(NET.id)netSend('LOCATION_UPDATE')},10000)}
+function stopLive(){if(NET.watch!=null){navigator.geolocation.clearWatch(NET.watch);NET.watch=null}if(NET.timer){clearInterval(NET.timer);NET.timer=null}}
+$('testConn').onclick=async()=>{saveNet();setStatus('Testando conexão com a central…');const r=await netSend('CONNECTION_TEST');setStatus(r.ok?'Central respondeu: conexão OK.':'Falha ao conectar: '+r.reason)};
+function saveNet(){save(NET.key,{url:$('apiUrl').value.trim(),token:$('apiToken').value})}
+$('saveProfile').addEventListener('click',saveNet);
+{const n=netCfg();$('apiUrl').value=n.url||'';$('apiToken').value=n.token||''}
+
+const pr=read(K.profile,{vip:'VIP 001',team:'CENTRAL 02'});$('vip').value=pr.vip||'VIP 001';$('teamCode').value=pr.team||'CENTRAL 02';contacts=read(K.contacts,[]);historyItems=read(K.history,[]);renderContacts();renderHistory();
+</script>
+</body></html>

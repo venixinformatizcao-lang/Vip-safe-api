@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VIP Central - Painel</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#0b1220;--panel:#121d30;--line:#293850;--text:#eef4ff;--muted:#a8b5ca;--red:#f04452;--green:#2ac58e}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px system-ui,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--line)}
+.brand{font-weight:900;letter-spacing:.08em}.brand span{color:var(--red)}
+#login{max-width:340px;margin:12vh auto;background:var(--panel);padding:22px;border-radius:16px;border:1px solid var(--line)}
+input{width:100%;padding:11px;margin:6px 0 12px;border-radius:9px;border:1px solid var(--line);background:#0b1423;color:var(--text);font:inherit}
+button{padding:10px 14px;border:0;border-radius:9px;background:#243751;color:var(--text);font-weight:700;cursor:pointer}
+button.g{background:#0f654d}button.r{background:#8e1c2a}
+#app{display:none;grid-template-columns:340px 1fr;height:calc(100vh - 54px)}
+#list{overflow:auto;border-right:1px solid var(--line);padding:10px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer}
+.item.ativo{border-color:var(--red);background:#351722}.item.sel{outline:2px solid #5b8def}
+.tag{font-size:.7rem;padding:3px 8px;border-radius:99px;background:#243751}
+.muted{color:var(--muted);font-size:.85rem}#map{height:100%}
+#status{font-size:.8rem;color:var(--muted)}
+@media(max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:230px 1fr}}
+</style></head><body>
+<header><div class="brand">VIP <span>CENTRAL</span></div><div><span id="status">desconectado</span> <button id="sair" style="display:none">Sair</button></div></header>
+<div id="login"><h3>Acesso da central</h3>
+<label>Usuário</label><input id="u" autocomplete="username">
+<label>Senha</label><input id="p" type="password" autocomplete="current-password">
+<button class="g" id="entrar">Entrar</button><p id="err" class="muted"></p></div>
+<div id="app"><div id="list"></div><div id="map"></div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let token=sessionStorage.getItem('central_token'),ws=null,alerts={},sel=null,map=null,markers={},lines={},audio=null,beepTimer=null;
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,...(opt.headers||{})}});if(r.status===401){logout();throw new Error('401')}return r.json()}
+$('entrar').onclick=async()=>{$('err').textContent='';try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:$('u').value,pass:$('p').value})});const j=await r.json();if(!r.ok)throw new Error(j.error||'Falha');token=j.token;sessionStorage.setItem('central_token',token);start()}catch(e){$('err').textContent=e.message}};
+$('sair').onclick=logout;
+function logout(){sessionStorage.removeItem('central_token');token=null;if(ws)ws.close();location.reload()}
+function startAlarm(){if(beepTimer)return;const C=window.AudioContext||window.webkitAudioContext;audio=audio||new C();const b=()=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.35)};b();beepTimer=setInterval(b,1200)}
+function stopAlarm(){clearInterval(beepTimer);beepTimer=null}
+function checkAlarm(){const need=Object.values(alerts).some(a=>a.status==='ATIVO');need?startAlarm():stopAlarm()}
+function render(){const arr=Object.values(alerts).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+$('list').innerHTML=arr.length?arr.map(a=>{const last=a.track[a.track.length-1];return `<div class="item ${a.status==='ATIVO'?'ativo':''} ${sel===a.id?'sel':''}" data-id="${esc(a.id)}"><b>${esc(a.client)}</b> <span class="tag">${esc(a.status)}</span><div class="muted">${new Date(a.createdAt).toLocaleString('pt-BR')} • ${esc(a.source)}</div><div class="muted">${last?('Última posição: '+new Date(last.t).toLocaleTimeString('pt-BR')+(last.acc?' ±'+last.acc+' m':'')):'Sem localização ainda'}</div>${a.closedAt?'':`<div style="margin-top:8px"><button class="g" data-ack="${esc(a.id)}">Confirmar recebimento</button> <button class="r" data-close="${esc(a.id)}">Encerrar</button></div>`}</div>`}).join(''):'<p class="muted">Nenhuma ocorrência.</p>';
+document.querySelectorAll('.item').forEach(e=>e.onclick=ev=>{if(ev.target.tagName==='BUTTON')return;sel=e.dataset.id;focus(sel);render()});
+document.querySelectorAll('[data-ack]').forEach(b=>b.onclick=()=>api('/api/alerts/'+b.dataset.ack+'/ack',{method:'POST'}));
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>api('/api/alerts/'+b.dataset.close+'/close',{method:'POST'}));
+arr.forEach(drawOnMap);checkAlarm()}
+function drawOnMap(a){const last=a.track[a.track.length-1];if(!last)return;const ll=[last.lat,last.lon];
+if(!markers[a.id])markers[a.id]=L.marker(ll).addTo(map);else markers[a.id].setLatLng(ll);
+markers[a.id].bindPopup('<b>'+esc(a.client)+'</b><br>'+esc(a.status));
+const pts=a.track.map(p=>[p.lat,p.lon]);if(!lines[a.id])lines[a.id]=L.polyline(pts,{color:'#f04452'}).addTo(map);else lines[a.id].setLatLngs(pts);
+if(sel===a.id||(!sel&&a.status==='ATIVO'))map.setView(ll,Math.max(map.getZoom(),15))}
+function focus(id){const a=alerts[id];const last=a&&a.track[a.track.length-1];if(last)map.setView([last.lat,last.lon],16)}
+function connect(){const proto=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(proto+'://'+location.host+'/ws/central?token='+encodeURIComponent(token));
+ws.onopen=()=>{$('status').textContent='🟢 ao vivo'};
+ws.onclose=()=>{$('status').textContent='🔴 reconectando…';if(token)setTimeout(connect,3000)};
+ws.onmessage=m=>{const d=JSON.parse(m.data);if(d.type==='SNAPSHOT'){alerts={};d.alerts.forEach(a=>alerts[a.id]=a)}else{alerts[d.alert.id]=d.alert;if(d.type==='NEW_ALERT'){sel=d.alert.id;if(Notification.permission==='granted')new Notification('🚨 SOS: '+d.alert.client)}}render()}}
+function start(){$('login').style.display='none';$('app').style.display='grid';$('sair').style.display='inline-block';
+if(!map){map=L.map('map').setView([-15.78,-47.93],4);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map)}
+if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
+api('/api/alerts').then(l=>{l.forEach(a=>alerts[a.id]=a);render()});connect()}
+if(token)start();
+</script></body></html>
